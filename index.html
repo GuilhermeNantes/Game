@@ -1,172 +1,57 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Menu Corrida</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
-
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: 'Fredoka One', cursive;
-      background: linear-gradient(180deg, #1e1e1e, #000);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-    /* Menu estilo mobile */
-    .menu {
-      text-align: center;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 40px 30px;
-      border-radius: 20px;
-      box-shadow: 0 8px 25px rgba(0, 255, 200, 0.5);
-      width: 300px;
-      animation: fadeIn 1s ease-out;
-    }
-
-    .menu h1 {
-      font-size: 2.2rem;
-      color: #00ffcc;
-      margin-bottom: 30px;
-      text-shadow: 0 0 12px #00ffcc;
-    }
-
-    .menu button {
-      width: 100%;
-      padding: 15px;
-      margin: 10px 0;
-      font-size: 1.2rem;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      color: white;
-      background: linear-gradient(90deg, #00ccff, #0066ff);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .menu button:hover {
-      transform: scale(1.05);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.6);
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Tela de Loading */
-    .loading-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: url("https://images.unsplash.com/photo-1502877338535-766e1452684a?auto=format&fit=crop&w=1920&q=80") no-repeat center center/cover;
-      display: none;
-      flex-direction: column;
-      justify-content: flex-end;
-      align-items: center;
-      z-index: 3;
-    }
-
-    .loading-bar {
-      width: 80%;
-      height: 25px;
-      border: 3px solid white;
-      border-radius: 15px;
-      margin: 30px auto 60px auto;
-      overflow: hidden;
-      background: rgba(0, 0, 0, 0.5);
-    }
-
-    .loading-progress {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #00ff00, #00cc00);
-      transition: width 0.1s;
-    }
-
-    .loading-text {
-      color: white;
-      font-size: 1.3rem;
-      text-align: center;
-      text-shadow: 0 0 10px black;
-      margin-bottom: 10px;
-    }
-
-    /* Tela do jogo */
-    .game-screen {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(circle at center, #111 0%, #000 100%);
-      color: white;
-      z-index: 4;
-      justify-content: center;
-      align-items: center;
-      font-size: 2rem;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="assets/imagens/icon/1-7b9df8e0.ico">
+    <title>Duke Race</title>
+    <!-- Include Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <!-- Menu principal estilo mobile -->
-  <div class="menu" id="mainMenu">
-    <h1>🏎️ Corrida Mobile</h1>
-    <button onclick="iniciar()">Iniciar</button>
-    <button onclick="config()">Configurações</button>
-    <button onclick="sair()">Sair</button>
-  </div>
+<body class="bg-gray-100 h-screen flex flex-col justify-end">
+    <!-- Game Canvas Placeholder (for future game rendering) -->
+    <div class="flex-grow bg-gray-800"></div>
 
-  <!-- Tela de Loading -->
-  <div class="loading-screen" id="loadingScreen">
-    <div class="loading-text">Carregando...</div>
-    <div class="loading-bar">
-      <div class="loading-progress" id="loadingProgress"></div>
+    <!-- Control Buttons -->
+    <div class="fixed bottom-0 left-0 right-0 p-4 flex justify-between">
+        <!-- Left Side: Steering Buttons (Side by Side) -->
+        <div class="flex space-x-4">
+            <button id="steer-left" 
+                    class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl shadow-lg active:bg-blue-800"
+                    ontouchstart="handleButton('Steer Left Pressed')"
+                    ontouchend="handleButton('Steer Left Released')">
+                ←
+            </button>
+            <button id="steer-right" 
+                    class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl shadow-lg active:bg-blue-800"
+                    ontouchstart="handleButton('Steer Right Pressed')"
+                    ontouchend="handleButton('Steer Right Released')">
+                →
+            </button>
+        </div>
+        <!-- Right Side: Accelerate/Brake Buttons -->
+        <div class="flex flex-col space-y-4">
+            <button id="accelerate" 
+                    class="w-16 h-16 bg-green-600 text-white rounded-full flex items-center justify-center text-2xl shadow-lg active:bg-green-800"
+                    ontouchstart="handleButton('Accelerate Pressed')"
+                    ontouchend="handleButton('Accelerate Released')">
+                ↑
+            </button>
+            <button id="brake" 
+                    class="w-16 h-16 bg-red-600 text-white rounded-full flex items-center justify-center text-2xl shadow-lg active:bg-red-800"
+                    ontouchstart="handleButton('Brake Pressed')"
+                    ontouchend="handleButton('Brake Released')">
+                ↓
+            </button>
+        </div>
     </div>
-  </div>
 
-  <!-- Tela do jogo -->
-  <div class="game-screen" id="gameScreen">
-    🚗 Corrida começou! (aqui entra seu jogo)
-  </div>
-
-  <script>
-    // Fluxo: Menu -> Loading -> Jogo
-    function iniciar() {
-      document.getElementById("mainMenu").style.display = "none";
-      const loadingScreen = document.getElementById("loadingScreen");
-      const progressBar = document.getElementById("loadingProgress");
-      loadingScreen.style.display = "flex";
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += 2;
-        progressBar.style.width = progress + "%";
-        if (progress >= 100) {
-          clearInterval(interval);
-          document.querySelector(".loading-text").innerText = "Pronto! 🏁";
-          setTimeout(() => {
-            loadingScreen.style.display = "none";
-            document.getElementById("gameScreen").style.display = "flex";
-          }, 800);
+    <!-- JavaScript for Button Interaction -->
+    <script>
+        function handleButton(action) {
+            console.log(action);
+            // Add your game logic here (e.g., update car movement)
         }
-      }, 70);
-    }
-
-    function config() {
-      alert("⚙️ Configurações...");
-    }
-
-    function sair() {
-      alert("👋 Saindo...");
-    }
-  </script>
+    </script>
 </body>
 </html>
