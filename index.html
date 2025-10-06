@@ -1,57 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>Drift 3D - Corrida de Checkpoints</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="assets/imagens/icon/1-7b9df8e0.ico">
-    <title>Duke Race</title>
-    <!-- Include Tailwind CSS via CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/main.css">
 </head>
-<body class="bg-gray-100 h-screen flex flex-col justify-end">
-    <!-- Game Canvas Placeholder (for future game rendering) -->
-    <div class="flex-grow bg-gray-800"></div>
-
-    <!-- Control Buttons -->
-    <div class="fixed bottom-0 left-0 right-0 p-4 flex justify-between">
-        <!-- Left Side: Steering Buttons (Side by Side) -->
-        <div class="flex space-x-4">
-            <button id="steer-left" 
-                    class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl shadow-lg active:bg-blue-800"
-                    ontouchstart="handleButton('Steer Left Pressed')"
-                    ontouchend="handleButton('Steer Left Released')">
-                ←
-            </button>
-            <button id="steer-right" 
-                    class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl shadow-lg active:bg-blue-800"
-                    ontouchstart="handleButton('Steer Right Pressed')"
-                    ontouchend="handleButton('Steer Right Released')">
-                →
-            </button>
+<body>
+    <div id="log">Status: Carregando...</div>
+    <div id="hud">Velocidade: 0 km/h<br>Ângulo: 0°</div>
+    <div id="coordinate-display">
+        Coordenadas:<br>X: 0<br>Y: 0<br>Z: 0<br><br>Voltas: 0/3<br>Próximo: Largada
+    </div>
+    <div id="mobile-controls">
+        
+        <div class="control-group">
+            <div class="control-button" id="btn-left">◀️</div>
+            <div class="control-button" id="btn-right">▶️</div>
         </div>
-        <!-- Right Side: Accelerate/Brake Buttons -->
-        <div class="flex flex-col space-y-4">
-            <button id="accelerate" 
-                    class="w-16 h-16 bg-green-600 text-white rounded-full flex items-center justify-center text-2xl shadow-lg active:bg-green-800"
-                    ontouchstart="handleButton('Accelerate Pressed')"
-                    ontouchend="handleButton('Accelerate Released')">
-                ↑
-            </button>
-            <button id="brake" 
-                    class="w-16 h-16 bg-red-600 text-white rounded-full flex items-center justify-center text-2xl shadow-lg active:bg-red-800"
-                    ontouchstart="handleButton('Brake Pressed')"
-                    ontouchend="handleButton('Brake Released')">
-                ↓
-            </button>
+
+        <div class="control-group">
+            <div class="control-button" id="btn-drift">DRIFT</div>
+            
+            <div class="control-button" id="btn-up">⬆️</div>
+            <div class="control-button" id="btn-down">⬇️</div>
         </div>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
 
-    <!-- JavaScript for Button Interaction -->
-    <script>
-        function handleButton(action) {
-            console.log(action);
-            // Add your game logic here (e.g., update car movement)
-        }
-    </script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

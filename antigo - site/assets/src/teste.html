@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Drift 3D - Corrida de Checkpoints</title>
+    <style>
+        body { margin: 0; overflow: hidden; font-family: 'Arial', sans-serif; background-color: #000; }
+        canvas { display: block; }
+        #log {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            font-family: monospace;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: 'Arial', sans-serif;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        #coordinate-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: yellow;
+            font-family: monospace;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="log">Status: Carregando...</div>
+    <div id="hud">
+        Velocidade: 0 km/h<br>
+        Ângulo: 0°
+    </div>
+    <div id="coordinate-display">
+        Coordenadas:<br>X: 0<br>Y: 0<br>Z: 0<br><br>
+        Voltas: 0/3<br>
+        Próximo: Largada
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+
+    <script>
+        // Configuração da cena
+        const scene = new THREE.Scene();
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+        scene.background = new THREE.Color(0x87ceeb);
+
+        // Adiciona luzes com sombras
+        const ambientLight = new THREE.AmbientLight(0xffffff, 2);
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(20, 30, 10);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 100;
+        directionalLight.shadow.camera.left = -50;
+        directionalLight.shadow.camera.right = 50;
+        directionalLight.shadow.camera.top = 50;
+        directionalLight.shadow.camera.bottom = -50;
+        scene.add(directionalLight);
+
+        // Câmera
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const cameraTarget = new THREE.Vector3();
+        const cameraOffset = new THREE.Vector3(0, 3.5, -7);
+
+        // Variáveis do jogo
+        let carMesh = null;
+        let trackMesh = null;
+        const logElement = document.getElementById('log');
+        const hudElement = document.getElementById('hud');
+        const coordinateDisplay = document.getElementById('coordinate-display');
+        
+        let velocity = new THREE.Vector3();
+        const maxSpeed = 10.0;
+        const accelerationRate = 0.03;
+        const brakingRate = 0.08;
+        const drag = 0.98;
+        const traction = 0.95;
+
+        let steeringInput = 0;
+        const steeringSpeed = 0.03;
+        const maxSteeringAngle = Math.PI / 8;
+        const driftTractionFactor = 0.08;
+        const driftDrag = 0.9;
+
+        let wheels = {
+            frontLeft: null,
+            frontRight: null,
+            rearLeft: null,
+            rearRight: null
+        };
+        const wheelRotationSpeedMultiplier = 20;
+        
+        // Posição inicial do carro
+        const START_Y_LEVEL = 35.30;
+        const startPosition = new THREE.Vector3(45.01, START_Y_LEVEL, 197.00); 
+        const startRotationY = -Math.PI / 2;
+
+        // NOVO: SISTEMA DE CHECKPOINTS E CORRIDA OTIMIZADO
+        const checkpoints = [
+            // Checkpoint 0: Linha de Chegada/Largada (Y corrigido)
+            { pos: new THREE.Vector3(22, -35, 197.00), name: "Largada/Chegada" }, 
+            // Checkpoint 1: Ponto Intermediário 1 (Y corrigido)
+            { pos: new THREE.Vector3(-181, -10, -101.81), name: "Ponto 1" }, 
+            // Checkpoint 2: Ponto Intermediário 2 (Y corrigido)
+            { pos: new THREE.Vector3(111, -15.93, -47.63), name: "Ponto 2" },  
+        ];
+        
+        let currentCheckpointIndex = 0;
+        const checkpointTolerance = 20; // Raio de detecção
+        let laps = 0;
+        const totalLaps = 3; // Total de voltas para a corrida
+        let lastCheckpointTime = Date.now();
+        let nextCheckpointMesh = null;
+        let checkpointsReachedInCurrentLap = 0; // CONTADOR PARA GARANTIR A ORDEM
+        let raceStarted = false; // FLAG PARA INICIAR A CORRIDA
+
+        const keyboard = {};
+        document.addEventListener('keydown', (e) => keyboard[e.key] = true);
+        document.addEventListener('keyup', (e) => keyboard[e.key] = false);
+
+        const raycaster = new THREE.Raycaster();
+        const downwardVector = new THREE.Vector3(0, -1, 0);
+
+        const loader = new THREE.GLTFLoader();
+        const dracoLoader = new THREE.DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.4.1/');
+        loader.setDRACOLoader(dracoLoader);
+
+        function setupShadows(object) {
+            object.traverse((child) => {
+                if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
+        }
+
+        // FUNÇÃO MODIFICADA: Cria um muro/parede retangular vermelho
+        function createCheckpointMarker() {
+            // Dimensões da Parede: 
+            // Largura (W): 40 (O dobro da tolerância, para cobrir a pista)
+            // Altura (H): 10
+            // Profundidade (D): 1 (Fino como uma parede)
+            const geometry = new THREE.BoxGeometry(40, 10, 1); 
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0xff0000, // COR VERMELHA SÓLIDA
+                transparent: true, 
+                opacity: 0.7 // Pouca transparência
+            });
+            const mesh = new THREE.Mesh(geometry, material);
+            // NÃO rotaciona, pois a caixa já é vertical
+            return mesh;
+        }
+
+        function updateCheckpointMarker() {
+            if (nextCheckpointMesh) {
+                scene.remove(nextCheckpointMesh);
+            }
+            if (laps < totalLaps) {
+                nextCheckpointMesh = createCheckpointMarker();
+                const nextCp = checkpoints[currentCheckpointIndex];
+                
+                // Posição inicial: No ponto central do checkpoint
+                nextCheckpointMesh.position.copy(nextCp.pos);
+
+                // Eleva a parede: 5 (metade da altura da BoxGeometry) + 0.5 (offset)
+                nextCheckpointMesh.position.add(new THREE.Vector3(0, 5.5, 0)); 
+                
+                // IMPORTANTE: Rotaciona a parede para que ela fique perpendicular à pista
+                // Como o carro começa em Z=197, a parede deve ser perpendicular ao eixo Z
+                if (currentCheckpointIndex === 0) {
+                     // Ajuste manual de rotação, se necessário, para que a parede não fique na direção do movimento
+                     nextCheckpointMesh.rotation.y = Math.PI / 2; 
+                }
+                
+                scene.add(nextCheckpointMesh);
+            }
+        }
+
+        // Carrega a pista
+        loader.load(
+            'cartoon_race_track_spielberg.glb',
+            function(gltf) {
+                const track = gltf.scene;
+                setupShadows(track);
+                const box = new THREE.Box3().setFromObject(track);
+                const center = box.getCenter(new THREE.Vector3());
+                track.position.sub(center);
+                scene.add(track);
+                trackMesh = track;
+                logElement.textContent = 'Pista carregada.';
+                // Carrega o carro
+                loader.load(
+                    '1967_shelby_gt500.glb',
+                    function(carGltf) {
+                        carMesh = carGltf.scene;
+                        setupShadows(carMesh);
+                        carMesh.scale.set(0.75, 0.75, 0.75);
+                        scene.add(carMesh);
+                        
+                        carMesh.position.copy(startPosition);
+                        carMesh.rotation.y = startRotationY;
+
+                        carMesh.traverse((child) => {
+                            if (child.name.includes("wheel")) {
+                                if (child.name.includes("front_left")) wheels.frontLeft = child;
+                                if (child.name.includes("front_right")) wheels.frontRight = child;
+                                if (child.name.includes("rear_left")) wheels.rearLeft = child;
+                                if (child.name.includes("rear_right")) wheels.rearRight = child;
+                            }
+                        });
+
+                        updateCheckpointMarker();
+                        logElement.textContent = 'Carro carregado. Use as setas para mover, freio de mão com ESPAÇO para fazer DRIFT!';
+                    },
+                    (xhr) => {
+                        logElement.textContent = `Carregando carro: ${ (xhr.loaded / xhr.total * 100).toFixed(0) }%`;
+                    },
+                    (error) => {
+                        console.error('Erro ao carregar o modelo do carro:', error);
+                        logElement.textContent = 'Erro ao carregar o modelo do carro.';
+                    }
+                );
+            },
+            (xhr) => {
+                logElement.textContent = `Carregando pista: ${ (xhr.loaded / xhr.total * 100).toFixed(0) }%`;
+            },
+            (error) => {
+                console.error('Erro ao carregar o modelo da pista:', error);
+                logElement.textContent = 'Erro ao carregar o modelo da pista.';
+            }
+        );
+        
+        // Loop de animação
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (carMesh && trackMesh) {
+                const isHandbraking = keyboard[' '];
+                const currentSpeed = velocity.length();
+
+                // === LÓGICA DE MOVIMENTO E FÍSICA ===
+                if (keyboard['ArrowUp']) {
+                    if (currentSpeed < maxSpeed) {
+                        velocity.add(new THREE.Vector3(0, 0, accelerationRate).applyQuaternion(carMesh.quaternion));
+                    }
+                } else if (keyboard['ArrowDown']) {
+                    velocity.sub(new THREE.Vector3(0, 0, brakingRate).applyQuaternion(carMesh.quaternion));
+                    if (currentSpeed < 0.05) velocity.set(0,0,0);
+                }
+
+                let targetSteering = 0;
+                if (keyboard['ArrowLeft']) {
+                    targetSteering = maxSteeringAngle;
+                } else if (keyboard['ArrowRight']) {
+                    targetSteering = -maxSteeringAngle;
+                }
+                steeringInput += (targetSteering - steeringInput) * steeringSpeed;
+
+                const forwardVector = new THREE.Vector3(0, 0, 1).applyQuaternion(carMesh.quaternion);
+                const rightVector = new THREE.Vector3(1, 0, 0).applyQuaternion(carMesh.quaternion);
+                const sideVelocity = rightVector.multiplyScalar(velocity.dot(rightVector));
+                const forwardVelocity = forwardVector.multiplyScalar(velocity.dot(forwardVector));
+
+                let currentTraction = traction;
+                let currentDrag = drag;
+                if (isHandbraking && currentSpeed > 0.1) {
+                    currentTraction = driftTractionFactor;
+                    currentDrag = driftDrag;
+                }
+
+                velocity = forwardVelocity.multiplyScalar(currentTraction).add(sideVelocity.multiplyScalar(1 - currentTraction));
+                velocity.multiplyScalar(currentDrag);
+
+                const rotationAngle = (steeringInput * velocity.length() * (isHandbraking ? 1.5 : 1));
+                carMesh.rotation.y += rotationAngle;
+
+                carMesh.position.add(velocity);
+                
+                // Rotação das Rodas e Suspensão
+                const tiltFactor = velocity.length() * 0.5;
+                const targetTiltZ = -steeringInput * tiltFactor;
+                carMesh.rotation.z += (targetTiltZ - carMesh.rotation.z) * 0.1;
+
+                if (wheels.frontLeft && wheels.frontRight) {
+                    const wheelSpeed = currentSpeed * wheelRotationSpeedMultiplier;
+                    wheels.frontLeft.rotation.x += wheelSpeed;
+                    wheels.frontRight.rotation.x += wheelSpeed;
+                    wheels.rearLeft.rotation.x += wheelSpeed;
+                    wheels.rearRight.rotation.x += wheelSpeed;
+                    
+                    wheels.frontLeft.rotation.y = steeringInput;
+                    wheels.frontRight.rotation.y = steeringInput;
+                }
+
+                raycaster.set(carMesh.position, downwardVector);
+                const intersects = raycaster.intersectObjects(trackMesh.children, true);
+                
+                if (intersects.length > 0) {
+                    const firstHit = intersects[0];
+                    const carHeight = new THREE.Box3().setFromObject(carMesh).getSize(new THREE.Vector3()).y;
+                    carMesh.position.y = firstHit.point.y + carHeight / 2;
+                } else {
+                    carMesh.position.y -= 0.1;
+                }
+
+                // Lógica da Câmera
+                cameraTarget.copy(carMesh.position);
+                const rotatedCameraOffset = cameraOffset.clone().applyQuaternion(carMesh.quaternion);
+                const cameraShake = new THREE.Vector3(
+                    Math.sin(Date.now() * 0.005) * currentSpeed * 0.2,
+                    Math.cos(Date.now() * 0.005) * currentSpeed * 0.1,
+                    0
+                );
+                const newCameraPosition = carMesh.position.clone().add(rotatedCameraOffset).add(cameraShake);
+                camera.position.lerp(newCameraPosition, 0.1);
+                camera.lookAt(cameraTarget);
+
+                
+                // === LÓGICA DE DETECÇÃO DE CHECKPOINTS OTIMIZADA ===
+                const nextCheckpoint = checkpoints[currentCheckpointIndex];
+                const totalIntermediateCheckpoints = checkpoints.length - 1;
+
+                if (carMesh.position.distanceTo(nextCheckpoint.pos) < checkpointTolerance) {
+                    
+                    if (currentCheckpointIndex === 0) { // Linha de Chegada/Largada
+                        
+                        if (!raceStarted) {
+                            raceStarted = true;
+                            laps = 0; 
+                            logElement.textContent = `🟢 CORRIDA INICIADA! Passe pelo Ponto 1.`;
+                            
+                        } else if (checkpointsReachedInCurrentLap === totalIntermediateCheckpoints) {
+                            laps++;
+                            
+                            if (laps >= totalLaps) {
+                                const finalTime = ((Date.now() - lastCheckpointTime) / 1000).toFixed(2);
+                                logElement.textContent = `🏆 CORRIDA FINALIZADA! ${totalLaps} Voltas em ${finalTime}s`;
+                            } else {
+                                logElement.textContent = `✅ Volta ${laps}/${totalLaps} completada!`;
+                            }
+                            
+                            checkpointsReachedInCurrentLap = 0; 
+                            
+                        } else {
+                            const missing = totalIntermediateCheckpoints - checkpointsReachedInCurrentLap;
+                            logElement.textContent = `🚫 FALTA ${missing} checkpoint(s) antes de cruzar a Linha de Chegada! Próximo: ${checkpoints[currentCheckpointIndex + 1].name}`;
+                            return; 
+                        }
+                    
+                    } else { // Checkpoints Intermediários (Index > 0)
+                        checkpointsReachedInCurrentLap++; 
+                        const nextIndex = (currentCheckpointIndex + 1) % checkpoints.length;
+                        logElement.textContent = `Checkpoint "${nextCheckpoint.name}" atingido! Próximo: ${checkpoints[nextIndex].name}`;
+                    }
+
+                    // Avança para o PRÓXIMO checkpoint
+                    currentCheckpointIndex++;
+                    if (currentCheckpointIndex >= checkpoints.length) {
+                        currentCheckpointIndex = 0; 
+                    }
+                    
+                    updateCheckpointMarker();
+                    lastCheckpointTime = Date.now();
+                }
+                
+                // ATUALIZA OS DADOS NA TELA (HUD)
+                const speedKmh = Math.floor(currentSpeed * 180);
+                const steeringDeg = Math.floor(steeringInput * (180 / Math.PI));
+                hudElement.innerHTML = `Velocidade: ${speedKmh} km/h<br>Ângulo: ${steeringDeg}°`;
+
+                // Coordenadas e Status da Corrida
+                const pos = carMesh.position;
+                let nextCpName = "Corrida Finalizada";
+                if (laps < totalLaps) {
+                    nextCpName = checkpoints[currentCheckpointIndex].name;
+                }
+                coordinateDisplay.innerHTML = `Coordenadas:<br>X: ${pos.x.toFixed(2)}<br>Y: ${pos.y.toFixed(2)}<br>Z: ${pos.z.toFixed(2)}<br><br>Voltas: ${laps}/${totalLaps}<br>Próximo: ${nextCpName}`;
+            }
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,109 @@
+/* css/main.css */
+
+body { 
+    margin: 0; 
+    overflow: hidden; 
+    font-family: 'Arial', sans-serif; 
+    background-color: #000; 
+}
+canvas { 
+    display: block; 
+}
+
+/* Estilos do Log (canto inferior esquerdo) */
+#log {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    color: white;
+    font-family: monospace;
+    background: rgba(0,0,0,0.7);
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 14px;
+    z-index: 10;
+}
+
+/* Estilos do HUD (canto superior esquerdo) */
+#hud {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    font-family: 'Arial', sans-serif;
+    background: rgba(0,0,0,0.7);
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 16px;
+    z-index: 10;
+}
+
+/* Estilos do Display de Coordenadas/Voltas (canto superior direito) */
+#coordinate-display {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    color: yellow;
+    font-family: monospace;
+    background: rgba(0,0,0,0.7);
+    padding: 8px 15px;
+    border-radius: 8px;
+    font-size: 14px;
+    display: block;
+    z-index: 10;
+}
+   /* Estilos para os controles mobile */
+   #mobile-controls {
+    /* Posicionamento fixo na parte inferior */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    
+    /* Flexbox para espaçar os grupos */
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end; /* Alinha tudo à linha de base */
+    padding: 10px 20px; /* Preenchimento para afastar das bordas */
+    box-sizing: border-box;
+    z-index: 1000; 
+}
+
+.control-group {
+    display: flex;
+    gap: 10px; /* Espaçamento entre os botões dentro de cada grupo */
+}
+
+.control-button {
+    /* Tamanho e Estilo dos botões */
+    width: 100px; 
+    height: 80px;
+    line-height: 80px; /* Centraliza o texto verticalmente */
+    text-align: center;
+    font-size: 1.4em;
+    font-weight: bold;
+    color: white;
+    border: none;
+    border-radius: 8px; /* Cantos levemente arredondados */
+    
+    /* Cor de fundo translúcida */
+    background-color: rgba(100, 100, 100, 0.7); 
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4); 
+    
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.1s;
+}
+
+/* Ajuste visual para o botão de freio/drift */
+#btn-drift {
+    width: 110px; /* Um pouco mais largo */
+    height: 60px;
+    line-height: 60px;
+    align-self: flex-start; /* Alinha o botão de drift mais para cima */
+    margin-right: 10px; 
+}
+
+.control-button:active {
+    background-color: rgba(150, 150, 150, 0.9);
+}
