@@ -1,6 +1,18 @@
 /* css/main.css */
-
-body { 
+/* *** OTIMIZAÇÃO FULLSCREEN E MOBILE UX *** Garante que o jogo use 100% da viewport e tenta 
+esconder elementos de barra de rolagem e margens.
+*/
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; /* Esconde barras de rolagem */
+    width: 100%;
+    height: 100%;
+    touch-action: none; /* Desabilita gestos padrão do navegador, como zoom/pan */
+}body { 
+    position: fixed; /* Fixa o body para evitar problemas de scroll em alguns navegadores mobile */
+    top: 0;
+    left: 0;
     margin: 0; 
     overflow: hidden; 
     font-family: 'Arial', sans-serif; 
